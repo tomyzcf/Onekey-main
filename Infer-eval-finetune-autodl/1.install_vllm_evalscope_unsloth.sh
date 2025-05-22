@@ -43,6 +43,13 @@ check_success() {
     fi
 }
 
+# 检查包是否已安装
+is_package_installed() {
+    local package_name=$1
+    pip list | grep -q "$package_name"
+    return $?
+}
+
 # 清理临时文件函数
 cleanup_temp_files() {
     echo -e "${BLUE}[清理] 正在清理临时文件...${NC}"
@@ -155,11 +162,8 @@ check_disk_space
 cleanup_temp_files
 check_disk_space
 
-# 创建数据目录
-WORKDIR="/root/autodl-tmp"
-mkdir -p $WORKDIR
-echo -e "${BLUE}[提示] 已创建工作目录: ${WORKDIR}${NC}"
-echo -e "${BLUE}[提示] 请使用 download_huggingface_datasets.sh 脚本下载数据集${NC}"
+# 移除创建工作目录的步骤，AutoDL默认有这个目录
+echo -e "${BLUE}[提示] 请使用 2.download_data_and_models.sh 脚本下载模型和数据集${NC}"
 
 # ==============================================
 # 2. 安装vllm推理框架
@@ -188,8 +192,12 @@ source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate vllm || { handle_error "激活vllm环境失败"; exit 1; }
 
 pip install bitsandbytes>=0.45.3 || handle_error "安装bitsandbytes"
-pip install torch>=2.1.0 || handle_error "安装PyTorch" 
+# 移除了torch安装
 pip install --upgrade vllm || handle_error "安装vllm" "critical"
+
+show_detail "安装nltk并下载必要数据..."
+pip install nltk || handle_error "安装nltk"
+python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('omw-1.4'); nltk.download('wordnet'); nltk.download('stopwords')" || handle_error "下载nltk数据"
 
 # 清理vllm安装后的临时文件
 conda deactivate
@@ -221,6 +229,10 @@ python -m ipykernel install --user --name evalscope --display-name "Python evals
 
 show_detail "安装evalscope框架..."
 pip install 'evalscope[all]' || handle_error "安装evalscope" "critical"
+
+show_detail "安装nltk并下载必要数据..."
+pip install nltk || handle_error "安装nltk"
+python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('omw-1.4'); nltk.download('wordnet'); nltk.download('stopwords')" || handle_error "下载nltk数据"
 
 # 清理evalscope安装后的临时文件
 conda deactivate
@@ -267,6 +279,10 @@ show_detail "安装Unsloth框架和数据集访问库..."
 pip install --upgrade --force-reinstall --no-cache-dir unsloth unsloth_zoo || handle_error "安装Unsloth" "critical"
 pip install --upgrade datasets huggingface_hub || handle_error "安装huggingface相关库" 
 
+show_detail "安装nltk并下载必要数据..."
+pip install nltk || handle_error "安装nltk"
+python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('omw-1.4'); nltk.download('wordnet'); nltk.download('stopwords')" || handle_error "下载nltk数据"
+
 # 清理Unsloth安装后的临时文件
 conda deactivate
 cleanup_temp_files
@@ -293,11 +309,6 @@ python -c "from unsloth import __version__; print(f'Unsloth 版本: {__version__
 python -c "from datasets import __version__ as ds_version; print(f'Datasets 版本: {ds_version}')"
 check_success "验证Unsloth安装"
 
-# 验证CUDA可用性
-show_detail "验证CUDA可用性..."
-conda activate vllm
-python -c "import torch; print(f'CUDA可用: {torch.cuda.is_available()}'); print(f'CUDA版本: {torch.version.cuda if torch.cuda.is_available() else \"不可用\"}'); print(f'GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"不可用\"}')" || handle_error "CUDA检测失败"
-
 # 最终清理
 conda deactivate
 cleanup_temp_files
@@ -317,6 +328,5 @@ echo -e "${GREEN}要使用evalscope，请执行: conda activate evalscope${NC}"
 echo -e "${GREEN}要使用Unsloth，请执行: conda activate unsloth${NC}"
 echo -e "${GREEN}=================================================${NC}"
 echo -e "${PURPLE}如需下载模型和数据集，请使用以下脚本:${NC}"
-echo -e "${PURPLE}- 下载模型和评估数据集: download_modelscope_models.sh${NC}"
-echo -e "${PURPLE}- 下载微调数据集: download_huggingface_datasets.sh${NC}" 
+echo -e "${PURPLE}- 下载模型和数据集: 2.download_data_and_models.sh${NC}"
 echo -e "${GREEN}=================================================${NC}" 
